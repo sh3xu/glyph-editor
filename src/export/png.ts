@@ -1,4 +1,11 @@
-export type PngScale = 1 | 2 | 4;
+export const MIN_PNG_SCALE = 2;
+export const MAX_PNG_SCALE = 32;
+export type PngScale = number;
+
+export function clampPngScale(scale: number): PngScale {
+  const rounded = Math.round(scale);
+  return Math.min(MAX_PNG_SCALE, Math.max(MIN_PNG_SCALE, rounded));
+}
 
 /**
  * Rasterize an SVG string to a PNG blob at a given scale multiplier.
@@ -7,7 +14,7 @@ export type PngScale = 1 | 2 | 4;
  * @param svgString - Self-contained SVG markup
  * @param baseWidth - SVG viewBox width
  * @param baseHeight - SVG viewBox height
- * @param scale - Resolution multiplier (1x, 2x, 4x)
+ * @param scale - Resolution multiplier (2x to 32x)
  * @returns Promise<Blob> — PNG image blob
  */
 export function rasterizeSvgToPng(
@@ -16,8 +23,9 @@ export function rasterizeSvgToPng(
   baseHeight: number,
   scale: PngScale,
 ): Promise<Blob> {
-  const pxWidth = baseWidth * scale;
-  const pxHeight = baseHeight * scale;
+  const safeScale = clampPngScale(scale);
+  const pxWidth = baseWidth * safeScale;
+  const pxHeight = baseHeight * safeScale;
 
   return new Promise((resolve, reject) => {
     const img = new Image();

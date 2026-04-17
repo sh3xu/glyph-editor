@@ -786,6 +786,7 @@ h3 {
   border-left: 1px solid var(--border);
   background: var(--bg-surface);
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--sp-3) 0;
   gap: var(--sp-1);
 }
@@ -823,6 +824,14 @@ h3 {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  min-width: 0;
+}
+
+.inspector-row .segmented-control,
+.inspector-row .segmented-control-sm,
+.inspector-row .smoothing-bar {
+  flex: 1;
+  min-width: 0;
 }
 
 .inspector-layer {

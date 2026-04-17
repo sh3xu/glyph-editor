@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { PngScale } from "../export/png";
+import { clampPngScale, MAX_PNG_SCALE, MIN_PNG_SCALE } from "../export/png";
 import type { Layer } from "../models/layers";
 import type { SymmetryMode, ToolOptions } from "../models/tools";
 import { Tool } from "../models/tools";
@@ -374,6 +376,17 @@ export function ExportSection({
   onExportSvg,
   onExportPng,
 }: ExportSectionProps) {
+  const [exportFormat, setExportFormat] = useState<"svg" | "png">("svg");
+  const [pngQuality, setPngQuality] = useState<PngScale>(8);
+
+  function handleExport() {
+    if (exportFormat === "svg") {
+      onExportSvg();
+      return;
+    }
+    onExportPng(clampPngScale(pngQuality));
+  }
+
   return (
     <div className="inspector-section">
       <span className="inspector-label">Export</span>
@@ -387,18 +400,40 @@ export function ExportSection({
         value={exportMode}
         onChange={onExportModeChange}
       />
+      <div className="inspector-row">
+        <span className="inspector-sublabel">Format</span>
+        <SegmentedControl
+          size="sm"
+          options={[
+            { value: "svg", label: "SVG" },
+            { value: "png", label: "PNG" },
+          ]}
+          value={exportFormat}
+          onChange={(value) => setExportFormat(value as "svg" | "png")}
+        />
+      </div>
+
+      <div className="inspector-row">
+        <span className="inspector-sublabel">Quality</span>
+        <div className="smoothing-bar">
+          <input
+            className="slider"
+            type="range"
+            min={MIN_PNG_SCALE}
+            max={MAX_PNG_SCALE}
+            step={1}
+            value={pngQuality}
+            onChange={(e) => setPngQuality(clampPngScale(Number(e.target.value)))}
+            aria-label="PNG quality scale"
+            disabled={exportFormat !== "png"}
+          />
+          <span className="slider-value">{pngQuality}x</span>
+        </div>
+      </div>
+
       <div className="inspector-export-btns">
-        <button type="button" className="btn btn-sm btn-accent" onClick={onExportSvg}>
-          SVG
-        </button>
-        <button type="button" className="btn btn-sm" onClick={() => onExportPng(1)}>
-          1x
-        </button>
-        <button type="button" className="btn btn-sm" onClick={() => onExportPng(2)}>
-          2x
-        </button>
-        <button type="button" className="btn btn-sm" onClick={() => onExportPng(4)}>
-          4x
+        <button type="button" className="btn btn-sm btn-accent" onClick={handleExport}>
+          Export {exportFormat.toUpperCase()}
         </button>
       </div>
     </div>

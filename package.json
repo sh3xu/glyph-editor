@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "gh-pages -d dist",
     "preview": "vite preview",
     "check": "biome check src",
     "format": "biome check --write src",

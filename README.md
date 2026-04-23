@@ -1,162 +1,71 @@
-# Logo gen
+# Logo Designer
 
-A browser-based logo creator that lets you sketch on a grid and export polished SVG or PNG files—no design software needed. Draw using a flexible grid, adjust curve smoothing, and generate clean vector artwork in light, dark, or adaptive themes.
+Browser-based logo editor for drawing pixel-grid artwork and exporting polished assets as SVG and PNG.
 
----
+- Live app: [https://sh3xu.github.io/makelogo/](https://sh3xu.github.io/makelogo/)
+- Local-first: no backend required
+- Stack: React + TypeScript + Vite
 
-## Overview
+## Features
 
-The editor works through a simple three-step flow:
+- Grid-based editor (small to large canvas sizes)
+- Draw, erase, line, rectangle, ellipse, and flood-fill tools
+- Brush sizes, symmetry modes, and shape fill/outline options
+- Multi-layer workflow with visibility and transformation controls
+- Smooth vector mode (Bezier) and pixel mode rendering
+- SVG and PNG export with light, dark, and adaptive themes
+- Action-level undo/redo history
 
-1. **Create** — fill cells on a grid (from 8×8 up to 128×128). Each cell represents either color or empty space.
-2. **Refine** — the system converts filled regions into outlines using marching squares, then smooths them with cubic Bézier curves. A single control adjusts how rounded or sharp the result becomes.
-3. **Export** — output the final artwork as SVG or PNG at multiple resolutions.
-
-Everything runs locally in your browser—no backend required.
-
----
-
-## Capabilities
-
-### Drawing tools
-
-| Tool      | Key | Purpose                    |
-| --------- | --- | -------------------------- |
-| Draw      | `D` | Paint cells directly       |
-| Erase     | `E` | Remove filled cells        |
-| Line      | `L` | Draw straight segments     |
-| Rectangle | `R` | Create rectangles          |
-| Ellipse   | `O` | Create ellipses            |
-| Fill      | `F` | Flood-fill connected areas |
-
-**Brush sizes** range from 1 to 4 cells, helping speed up larger edits.
-
-**Symmetry options** include horizontal, vertical, and four-way mirroring—useful for balanced designs.
-
-**Shape modes** allow both filled and outline-only variants for rectangles and ellipses.
-
----
-
-### Layer system
-
-Supports up to three separate layers. Each layer can be toggled, rotated, and exported independently. In SVG output, layers appear as grouped elements, making further editing easier.
-
----
-
-### Curve smoothing
-
-A single slider (0 → 1) controls how much smoothing is applied:
-
-* **0** → sharp, grid-based shapes
-* **1** → fully smoothed, rounded forms
-
-Two rendering styles:
-
-* **Smooth** — Bézier-based curves
-* **Pixel** — hard-edged polygons for a blocky look
-
-Changes update live with a slight debounce for performance.
-
----
-
-### Export options
-
-**SVG**
-
-* Fully standalone
-* Inline styling
-* Organized by layer (`<g>`) and color (`<path>`)
-
-**PNG**
-
-* Generated from SVG
-* Available at 1×, 2×, and 4× scales
-
-**Themes**
-
-* **Light** — dark elements on light background
-* **Dark** — light elements on dark background
-* **Adaptive** — automatically switches using `prefers-color-scheme`
-
----
-
-### Undo / Redo
-
-* Supports full action-level history
-* `Ctrl+Z` → undo
-* `Ctrl+Shift+Z` → redo
-* Each action (draw, drag, resize, etc.) is treated as a single step
-
----
-
-## Setup
+## Quick Start
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open: `http://localhost:5173`
+Open `http://localhost:5173`.
 
-Additional commands:
+## Scripts
 
-```bash
-pnpm build    # create production build
-pnpm preview  # preview build locally
-pnpm test     # run tests
-pnpm check    # run biome checks
-```
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start local development server |
+| `pnpm build` | Run TypeScript build and generate production bundle |
+| `pnpm preview` | Preview the production build locally |
+| `pnpm test` | Run unit tests once with Vitest |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm check` | Run Biome checks on `src` |
+| `pnpm format` | Auto-fix formatting/lint issues in `src` |
+| `pnpm deploy` | Deploy `dist` to GitHub Pages |
 
-No configuration or environment variables needed.
 
----
+## Project Structure
 
-## Code layout
-
-```
+```text
 src/
-├── app/             # App setup and orchestration
-├── features/        # Core feature modules (editor, preview, inspector)
-├── shared/          # Reusable UI elements
-├── models/          # Data models (grid, layers, tools)
-├── canvas/          # Drawing logic and history handling
-├── smoothing/       # Contour detection and curve generation
-├── export/          # File generation (SVG/PNG)
-└── components/      # Older UI components
+├── app/          # Application composition and workspace hooks
+├── features/     # Feature-level UI (editor, inspector, preview)
+├── shared/       # Reusable UI building blocks
+├── models/       # Core data models and domain utilities
+├── canvas/       # Drawing interactions, rendering, and history
+├── smoothing/    # Contour extraction and curve processing
+├── export/       # SVG/PNG generation and download flows
+└── components/   # Legacy/shared components still in use
 ```
 
-Processing flow:
+## Rendering Pipeline
 
+```text
+Grid State -> Contour Extraction -> Smoothing/Styling -> Export (SVG/PNG)
 ```
-Grid State → Vector Processing → File Export
-```
 
-Each stage is independent and does not modify the previous one.
+The editing model and export pipeline are intentionally separated so export style changes do not mutate source drawing data.
 
----
+## Deployment Notes
 
-## Stack
-
-* React 19
-* Vite 8
-* TypeScript
-* Vitest + Testing Library
-
-Minimal dependencies beyond React.
-
----
-
-## Design details
-
-**Contour extraction** uses marching squares with 8-direction connectivity. Ambiguous cases are handled using averaged corner values for smoother, more consistent results.
-
-**Edge handling** adds a virtual padding layer around the grid before processing. This ensures shapes touching edges generate closed paths instead of clipped ones.
-
-**History system** groups changes into complete user actions. For example, a drag operation is stored as one step rather than many small updates.
-
-**Color modes** are applied during export, allowing the same shape data to render in different themes without altering the original grid.
-
----
+- Vite `base` is configured as `/makelogo/` for GitHub Pages.
+- `homepage` in `package.json` points to the published site URL.
+- Use `pnpm build && pnpm deploy` to publish updates.
 
 ## License
 

@@ -5,7 +5,7 @@ import type { SmoothingMode } from "./mode";
 import {
   type ColoredContour,
   type LayerContours,
-  extractColorContoursForColors,
+  extractColorContoursForGroups,
   getColorExtractionPlan,
 } from "./multicolor";
 import type { SmoothedLayerResult } from "./smoothPaths";
@@ -27,10 +27,10 @@ export async function extractAllLayerContoursChunked(
     const plan = getColorExtractionPlan(grid, layer.id);
     const contours: ColoredContour[] = [];
 
-    for (let i = 0; i < plan.colors.length; i += COLORS_PER_CHUNK) {
-      const batch = plan.colors.slice(i, i + COLORS_PER_CHUNK);
-      contours.push(...extractColorContoursForColors(grid, layer.id, batch, plan.sampleStep));
-      if (i + COLORS_PER_CHUNK < plan.colors.length) {
+    for (let i = 0; i < plan.groups.length; i += COLORS_PER_CHUNK) {
+      const batch = plan.groups.slice(i, i + COLORS_PER_CHUNK);
+      contours.push(...extractColorContoursForGroups(grid, layer.id, batch, plan.sampleStep));
+      if (i + COLORS_PER_CHUNK < plan.groups.length) {
         await yieldToMain();
       }
     }

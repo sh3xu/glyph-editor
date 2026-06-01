@@ -133,6 +133,19 @@ export class Grid {
     }
     const cells = this._layers.get(layerId)!;
     for (let idx = 0; idx < cells.length; idx++) {
+      if (cells[idx]!.filled) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  layerHasColoredCells(layerId: string): boolean {
+    if (!this._layers.has(layerId)) {
+      return false;
+    }
+    const cells = this._layers.get(layerId)!;
+    for (let idx = 0; idx < cells.length; idx++) {
       const cell = cells[idx]!;
       if (cell.filled && cell.color !== undefined) {
         return true;
@@ -141,19 +154,23 @@ export class Grid {
     return false;
   }
 
-  getUniqueFillColors(layerId: string, maxColors?: number): string[] {
-    const colors: string[] = [];
-    const seen = new Set<string>();
+  countFillColors(layerId: string): Map<string, number> {
+    const counts = new Map<string, number>();
     this.forEachFilledCell(layerId, (_row, _col, color) => {
-      if (!seen.has(color)) {
-        seen.add(color);
-        colors.push(color);
-      }
+      counts.set(color, (counts.get(color) ?? 0) + 1);
     });
-    if (maxColors !== undefined && colors.length > maxColors) {
-      return colors.slice(0, maxColors);
+    return counts;
+  }
+
+  getUniqueFillColors(layerId: string, maxColors?: number): string[] {
+    const counts = this.countFillColors(layerId);
+    const sorted = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([color]) => color);
+    if (maxColors !== undefined && sorted.length > maxColors) {
+      return sorted.slice(0, maxColors);
     }
-    return colors;
+    return sorted;
   }
 
   importLayerCells(layerId: string, cells: readonly CellData[]): void {

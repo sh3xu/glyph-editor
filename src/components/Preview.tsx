@@ -46,7 +46,7 @@ export function Preview({
   const useVectorPreview = !rawGrid && hasPaths;
   const needsPixelScan = rawGrid || !hasPaths;
   const hasPixelCells = needsPixelScan
-    ? layerManager.getVisibleLayers().some((layer) => grid.layerHasFilledCells(layer.id))
+    ? layerManager.getVisibleLayers().some((layer) => grid.layerHasColoredCells(layer.id))
     : false;
   const hasContent = hasPixelCells || hasPaths;
 

@@ -1,5 +1,6 @@
 import type { Grid } from "../models/grid";
 import type { LayerManager } from "../models/layers";
+import { nearestColorInPalette } from "./colorPalette";
 import { type Contour, type Point, extractContours } from "./contour";
 import type { PaddedGrid } from "./padding";
 
@@ -36,10 +37,23 @@ export function maxColorsForSmoothing(gridSize: number): number {
   return MAX_LAYER_COLORS_FOR_SMOOTHING;
 }
 
+function cellMatchesColorGroup(
+  cell: { filled: boolean; color: string | undefined },
+  matchColors: ReadonlySet<string>,
+): boolean {
+  return cell.filled && cell.color !== undefined && matchColors.has(cell.color);
+}
+
 /**
- * Create a padded grid view that only considers cells of a specific color.
+ * Create a padded grid view for a color group (representative + merged aliases).
  */
-function padGridForColor(grid: Grid, layerId: string, color: string, sampleStep: number): PaddedGrid {
+function padGridForColorGroup(
+  grid: Grid,
+  layerId: string,
+  representative: string,
+  matchColors: ReadonlySet<string>,
+  sampleStep: number,
+): PaddedGrid {
   const n = grid.n;
   const cellsPerAxis = Math.ceil(n / sampleStep);
   const width = cellsPerAxis + 2;
@@ -57,7 +71,7 @@ function padGridForColor(grid: Grid, layerId: string, color: string, sampleStep:
       for (let dr = 0; dr < sampleStep && r0 + dr < n; dr++) {
         for (let dc = 0; dc < sampleStep && c0 + dc < n; dc++) {
           const cell = grid.getCell(layerId, r0 + dr, c0 + dc);
-          if (cell.filled && cell.color === color) {
+          if (cellMatchesColorGroup(cell, matchColors)) {
             return true;
           }
         }
@@ -73,8 +87,8 @@ function padGridForColor(grid: Grid, layerId: string, color: string, sampleStep:
       for (let dr = 0; dr < sampleStep && r0 + dr < n; dr++) {
         for (let dc = 0; dc < sampleStep && c0 + dc < n; dc++) {
           const cell = grid.getCell(layerId, r0 + dr, c0 + dc);
-          if (cell.filled && cell.color === color) {
-            return color;
+          if (cellMatchesColorGroup(cell, matchColors)) {
+            return representative;
           }
         }
       }
@@ -98,32 +112,72 @@ export function scaleContourToGrid(contour: Contour, sampleStep: number): Contou
   };
 }
 
+export interface ColorExtractionGroup {
+  representative: string;
+  matchColors: ReadonlySet<string>;
+}
+
 export interface ColorExtractionPlan {
   sampleStep: number;
-  colors: string[];
+  groups: ColorExtractionGroup[];
+}
+
+export function buildColorExtractionGroups(
+  grid: Grid,
+  layerId: string,
+  maxColors: number,
+): ColorExtractionGroup[] {
+  const counts = grid.countFillColors(layerId);
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (sorted.length === 0) {
+    return [];
+  }
+
+  const primary = sorted.slice(0, maxColors).map(([color]) => color);
+  const groups = new Map<string, Set<string>>();
+
+  for (const color of primary) {
+    groups.set(color, new Set([color]));
+  }
+
+  for (const [color] of sorted.slice(maxColors)) {
+    const target = nearestColorInPalette(color, primary);
+    groups.get(target)?.add(color);
+  }
+
+  return [...groups.entries()].map(([representative, matchColors]) => ({
+    representative,
+    matchColors,
+  }));
 }
 
 export function getColorExtractionPlan(grid: Grid, layerId: string): ColorExtractionPlan {
   const n = grid.n;
   return {
     sampleStep: smoothingSampleStep(n),
-    colors: grid.getUniqueFillColors(layerId, maxColorsForSmoothing(n)),
+    groups: buildColorExtractionGroups(grid, layerId, maxColorsForSmoothing(n)),
   };
 }
 
-export function extractColorContoursForColors(
+export function extractColorContoursForGroups(
   grid: Grid,
   layerId: string,
-  colors: readonly string[],
+  groups: readonly ColorExtractionGroup[],
   sampleStep: number,
 ): ColoredContour[] {
   const result: ColoredContour[] = [];
 
-  for (const color of colors) {
-    const padded = padGridForColor(grid, layerId, color, sampleStep);
+  for (const group of groups) {
+    const padded = padGridForColorGroup(
+      grid,
+      layerId,
+      group.representative,
+      group.matchColors,
+      sampleStep,
+    );
     const contours = extractContours(padded);
     for (const contour of contours) {
-      result.push({ ...scaleContourToGrid(contour, sampleStep), color });
+      result.push({ ...scaleContourToGrid(contour, sampleStep), color: group.representative });
     }
   }
 
@@ -135,7 +189,7 @@ export function extractColorContoursForColors(
  */
 export function extractColorContours(grid: Grid, layerId: string): ColoredContour[] {
   const plan = getColorExtractionPlan(grid, layerId);
-  return extractColorContoursForColors(grid, layerId, plan.colors, plan.sampleStep);
+  return extractColorContoursForGroups(grid, layerId, plan.groups, plan.sampleStep);
 }
 
 /**

@@ -153,10 +153,17 @@ describe("Grid", () => {
     expect(visited).toEqual(["1,2,#00ff00"]);
   });
 
-  it("getUniqueFillColors caps color list", () => {
+  it("getUniqueFillColors keeps most frequent colors when capped", () => {
     grid.fillCell(LAYER_A, 0, 0, "#111111");
     grid.fillCell(LAYER_A, 0, 1, "#222222");
+    grid.fillCell(LAYER_A, 1, 0, "#222222");
     grid.fillCell(LAYER_A, 0, 2, "#333333");
-    expect(grid.getUniqueFillColors(LAYER_A, 2)).toEqual(["#111111", "#222222"]);
+    expect(grid.getUniqueFillColors(LAYER_A, 2)).toEqual(["#222222", "#111111"]);
+  });
+
+  it("layerHasFilledCells is true for filled cells without color", () => {
+    grid.setCell(LAYER_A, 2, 2, { filled: true, color: undefined });
+    expect(grid.layerHasFilledCells(LAYER_A)).toBe(true);
+    expect(grid.layerHasColoredCells(LAYER_A)).toBe(false);
   });
 });

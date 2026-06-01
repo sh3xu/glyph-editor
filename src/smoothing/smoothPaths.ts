@@ -1,8 +1,11 @@
 import type { LayerManager } from "../models/layers";
+import { yieldToMain } from "../shared/yieldToMain";
 import { type SmoothedPath, smoothContour, smoothContourSubdivision } from "./bezier";
 import type { Contour } from "./contour";
 import type { ColoredContour, LayerContours } from "./multicolor";
 import { type SmoothingMode, usesRawGridStyling } from "./mode";
+
+const CONTOURS_PER_YIELD = 6;
 
 export interface SmoothedLayerResult {
   layerId: string;
@@ -24,7 +27,53 @@ const MODE_CONFIG: Record<
   smooth: { smoother: smoothContourSubdivision, alphaTransform: (a) => a },
 };
 
-/** NOTE: Bezier pass only; safe to run on every styling slider tick when contours are cached. */
+/** NOTE: Bezier pass with yields between contour batches so the UI stays responsive. */
+export async function smoothLayerContoursAsync(
+  layerContours: readonly LayerContours[],
+  layerManager: LayerManager,
+  alpha: number,
+  mode: SmoothingMode,
+): Promise<SmoothedLayerResult[]> {
+  if (usesRawGridStyling(mode)) {
+    return [];
+  }
+
+  const styledMode = mode as StyledSmoothingMode;
+  const { smoother, alphaTransform } = MODE_CONFIG[styledMode];
+  const adjustedAlpha = alphaTransform(alpha);
+  const result: SmoothedLayerResult[] = [];
+
+  await yieldToMain();
+  let processedSinceYield = 0;
+
+  for (const lc of layerContours) {
+    const layer = layerManager.getLayer(lc.layerId);
+    const paths: Array<SmoothedPath & { color: string }> = [];
+
+    for (const contour of lc.contours) {
+      paths.push({
+        ...smoother(contour, adjustedAlpha),
+        color: contour.color,
+      });
+      processedSinceYield++;
+      if (processedSinceYield >= CONTOURS_PER_YIELD) {
+        processedSinceYield = 0;
+        await yieldToMain();
+      }
+    }
+
+    result.push({
+      layerId: lc.layerId,
+      paths,
+      rotation: layer?.rotation ?? 0,
+    });
+    await yieldToMain();
+  }
+
+  return result;
+}
+
+/** NOTE: Synchronous Bezier pass for export/tests. */
 export function smoothLayerContours(
   layerContours: readonly LayerContours[],
   layerManager: LayerManager,

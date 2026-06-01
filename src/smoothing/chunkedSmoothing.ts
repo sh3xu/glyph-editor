@@ -9,10 +9,9 @@ import {
   getColorExtractionPlan,
 } from "./multicolor";
 import type { SmoothedLayerResult } from "./smoothPaths";
-import { smoothLayerContours } from "./smoothPaths";
+import { smoothLayerContoursAsync } from "./smoothPaths";
 
 const COLORS_PER_CHUNK = 2;
-const CONTOURS_PER_CHUNK = 6;
 
 export const PREVIEW_MIN_LOADER_MS = 140;
 
@@ -48,20 +47,7 @@ export async function smoothLayerContoursChunked(
   alpha: number,
   mode: SmoothingMode,
 ): Promise<SmoothedLayerResult[]> {
-  await yieldToMain();
-
-  const syncResult = smoothLayerContours(layerContours, layerManager, alpha, mode);
-  let contourBudget = 0;
-
-  for (const layer of syncResult) {
-    contourBudget += layer.paths.length;
-    if (contourBudget >= CONTOURS_PER_CHUNK) {
-      contourBudget = 0;
-      await yieldToMain();
-    }
-  }
-
-  return syncResult;
+  return smoothLayerContoursAsync(layerContours, layerManager, alpha, mode);
 }
 
 export async function runPreviewSmoothingPipeline(

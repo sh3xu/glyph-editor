@@ -436,6 +436,19 @@ export function SmoothingSection({
     onAlphaCommit(draftAlpha);
   }
 
+  const SLIDER_COMMIT_KEYS = new Set([
+    "Enter",
+    " ",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+  ]);
+
   return (
     <div className="inspector-section">
       <span className="inspector-label">Styling</span>
@@ -461,8 +474,9 @@ export function SmoothingSection({
           onChange={(e) => setDraftAlpha(parseFloat(e.target.value))}
           onPointerUp={commitDraftAlpha}
           onPointerCancel={commitDraftAlpha}
+          onBlur={commitDraftAlpha}
           onKeyUp={(e) => {
-            if (e.key === "Enter") {
+            if (SLIDER_COMMIT_KEYS.has(e.key)) {
               commitDraftAlpha();
             }
           }}

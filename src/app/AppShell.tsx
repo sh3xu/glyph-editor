@@ -23,6 +23,7 @@ export function AppShell() {
         sampleSummaries={state.sampleSummaries}
         canvasHasContent={state.canvasHasContent}
         onApplySample={actions.handleLoadSampleById}
+        onApplyImportedProject={actions.applyImportedProject}
       />
       <main className="workspace-grid">
         <aside className="workspace-tools">
@@ -82,7 +83,6 @@ export function AppShell() {
             canvasHasContent={state.canvasHasContent}
             theme={state.theme}
             onExportProject={actions.handleExportProject}
-            onApplyImportedProject={actions.applyImportedProject}
           />
         </aside>
       </main>

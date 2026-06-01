@@ -8,15 +8,15 @@ describe("clampGridSize", () => {
     expect(clampGridSize(-5)).toBe(8);
   });
 
-  it("clamps above maximum to 128", () => {
-    expect(clampGridSize(200)).toBe(128);
-    expect(clampGridSize(129)).toBe(128);
+  it("clamps above maximum to 256", () => {
+    expect(clampGridSize(300)).toBe(256);
+    expect(clampGridSize(257)).toBe(256);
   });
 
   it("passes through valid values", () => {
     expect(clampGridSize(8)).toBe(8);
     expect(clampGridSize(64)).toBe(64);
-    expect(clampGridSize(128)).toBe(128);
+    expect(clampGridSize(256)).toBe(256);
   });
 });
 
@@ -26,8 +26,8 @@ describe("assertValidGridSize", () => {
     expect(() => assertValidGridSize(0)).toThrow(RangeError);
   });
 
-  it("throws for N above 128", () => {
-    expect(() => assertValidGridSize(129)).toThrow(RangeError);
+  it("throws for N above 256", () => {
+    expect(() => assertValidGridSize(257)).toThrow(RangeError);
   });
 
   it("throws for non-integer N", () => {
@@ -37,7 +37,7 @@ describe("assertValidGridSize", () => {
   it("does not throw for valid N", () => {
     expect(() => assertValidGridSize(8)).not.toThrow();
     expect(() => assertValidGridSize(64)).not.toThrow();
-    expect(() => assertValidGridSize(128)).not.toThrow();
+    expect(() => assertValidGridSize(256)).not.toThrow();
   });
 });
 
@@ -50,8 +50,8 @@ describe("Grid", () => {
     grid = new Grid(16);
   });
 
-  it("can be initialized with any integer N from 8 to 128", () => {
-    for (const n of [8, 16, 32, 64, 128]) {
+  it("can be initialized with any integer N from 8 to 256", () => {
+    for (const n of [8, 16, 32, 64, 128, 256]) {
       const g = new Grid(n);
       expect(g.n).toBe(n);
     }
@@ -62,9 +62,9 @@ describe("Grid", () => {
     expect(() => new Grid(1)).toThrow(RangeError);
   });
 
-  it("rejects N above 128", () => {
-    expect(() => new Grid(129)).toThrow(RangeError);
-    expect(() => new Grid(256)).toThrow(RangeError);
+  it("rejects N above 256", () => {
+    expect(() => new Grid(257)).toThrow(RangeError);
+    expect(() => new Grid(300)).toThrow(RangeError);
   });
 
   it("returns the current N via .n", () => {
@@ -127,12 +127,12 @@ describe("Grid", () => {
     grid.resize(32);
     expect(grid.n).toBe(32);
     expect(() => grid.resize(7)).toThrow(RangeError);
-    expect(() => grid.resize(129)).toThrow(RangeError);
+    expect(() => grid.resize(257)).toThrow(RangeError);
   });
 
-  it("GRID_MIN is 8 and GRID_MAX is 128", () => {
+  it("GRID_MIN is 8 and GRID_MAX is 256", () => {
     expect(GRID_MIN).toBe(8);
-    expect(GRID_MAX).toBe(128);
+    expect(GRID_MAX).toBe(256);
   });
 
   it("getLayerCells returns flat array of correct size", () => {

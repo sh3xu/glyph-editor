@@ -16,6 +16,8 @@ Browser-based glyph editor for drawing pixel-grid artwork and exporting polished
 - Multi-layer workflow with visibility and transformation controls
 - Smooth vector mode (Bezier) and pixel mode rendering
 - SVG and PNG export with light, dark, and adaptive themes
+- Header **Import** menu: project JSON or image (PNG/JPEG/WebP/GIF) rasterized to 256×256 grid
+- Grid sizes up to 256×256 for high-detail pixel art
 - Action-level undo/redo history
 
 ## Quick Start

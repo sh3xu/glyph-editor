@@ -41,45 +41,39 @@ export function Preview({
   const rawGrid = usesRawGridStyling(smoothingMode);
 
   const hasPaths = smoothedResult.some((l) => l.paths.length > 0);
-  const hasPixelCells = rawGrid
-    ? layerManager.getVisibleLayers().some((layer) => {
-        for (let row = 0; row < grid.n; row++) {
-          for (let col = 0; col < grid.n; col++) {
-            const cell = grid.getCell(layer.id, row, col);
-            if (cell.filled && cell.color) {
-              return true;
-            }
-          }
-        }
-        return false;
-      })
-    : false;
+  const hasPixelCells = layerManager.getVisibleLayers().some((layer) => {
+    const cells = grid.getLayerCells(layer.id);
+    return cells.some((cell) => cell.filled && cell.color !== undefined);
+  });
 
-  const hasContent = rawGrid ? hasPixelCells : hasPaths;
+  const useVectorPreview = !rawGrid && hasPaths;
+  const hasContent = hasPixelCells || hasPaths;
 
   return (
     <div ref={containerRef} className="preview-container">
       <div className="preview-frame" style={{ width: svgPixels, height: svgPixels }}>
         {hasContent ? (
           <svg viewBox={`0 0 ${viewSize} ${viewSize}`} width={svgPixels} height={svgPixels}>
-            {rawGrid
+            {!useVectorPreview
               ? layerManager.getVisibleLayers().map((layer) => {
                   const rot = layer.rotation ?? 0;
                   const transform =
                     rot !== 0 ? `rotate(${rot}, ${center}, ${center})` : undefined;
                   const rects: Array<{ key: string; x: number; y: number; fill: string }> = [];
-                  for (let row = 0; row < grid.n; row++) {
-                    for (let col = 0; col < grid.n; col++) {
-                      const cell = grid.getCell(layer.id, row, col);
-                      if (cell.filled && cell.color) {
-                        rects.push({
-                          key: `${row},${col}`,
-                          x: col + pad,
-                          y: row + pad,
-                          fill: cell.color,
-                        });
-                      }
+                  const cells = grid.getLayerCells(layer.id);
+                  for (let idx = 0; idx < cells.length; idx++) {
+                    const cell = cells[idx]!;
+                    if (!cell.filled || !cell.color) {
+                      continue;
                     }
+                    const row = Math.floor(idx / grid.n);
+                    const col = idx % grid.n;
+                    rects.push({
+                      key: `${row},${col}`,
+                      x: col + pad,
+                      y: row + pad,
+                      fill: cell.color,
+                    });
                   }
                   return (
                     <g key={layer.id} transform={transform}>

@@ -9,7 +9,6 @@ import {
 import type { PngScale } from "../../export/png";
 import type { Layer } from "../../models/layers";
 import type { SymmetryMode, Tool, ToolOptions } from "../../models/tools";
-import type { ProjectDocument } from "../../samples/schema";
 import type { SmoothingMode } from "../../smoothing/slider";
 
 type ExportMode = "light" | "dark" | "no-bg";
@@ -43,7 +42,6 @@ interface InspectorPanelProps {
   canvasHasContent: boolean;
   theme: "dark" | "light";
   onExportProject: () => void;
-  onApplyImportedProject: (doc: ProjectDocument) => void;
 }
 
 type InspectorTab = "tools" | "layers" | "export";
@@ -121,10 +119,7 @@ export function InspectorPanel(props: InspectorPanelProps) {
             onExportModeChange={props.onExportModeChange}
             onExportSvg={props.onExportSvg}
             onExportPng={props.onExportPng}
-            canvasHasContent={props.canvasHasContent}
-            theme={props.theme}
             onExportProject={props.onExportProject}
-            onApplyImportedProject={props.onApplyImportedProject}
           />
         )}
       </div>

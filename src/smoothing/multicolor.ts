@@ -12,26 +12,72 @@ export interface LayerContours {
   contours: ColoredContour[];
 }
 
+/** NOTE: Each color runs a full contour pass; cap avoids UI freezes on dense imports. */
+export const MAX_LAYER_COLORS_FOR_SMOOTHING = 96;
+
+/** NOTE: Coarser marching-squares grid for large canvases (keeps styling responsive). */
+export function smoothingSampleStep(gridSize: number): number {
+  if (gridSize >= 192) {
+    return 4;
+  }
+  if (gridSize >= 128) {
+    return 2;
+  }
+  return 1;
+}
+
+export function maxColorsForSmoothing(gridSize: number): number {
+  if (gridSize >= 192) {
+    return 32;
+  }
+  if (gridSize >= 128) {
+    return 48;
+  }
+  return MAX_LAYER_COLORS_FOR_SMOOTHING;
+}
+
 /**
  * Create a padded grid view that only considers cells of a specific color.
  */
-function padGridForColor(grid: Grid, layerId: string, color: string): PaddedGrid {
+function padGridForColor(grid: Grid, layerId: string, color: string, sampleStep: number): PaddedGrid {
   const n = grid.n;
-  const width = n + 2;
-  const height = n + 2;
+  const cellsPerAxis = Math.ceil(n / sampleStep);
+  const width = cellsPerAxis + 2;
+  const height = cellsPerAxis + 2;
 
   return {
     width,
     height,
     get(row: number, col: number): boolean {
-      if (row <= 0 || row > n || col <= 0 || col > n) return false;
-      const cell = grid.getCell(layerId, row - 1, col - 1);
-      return cell.filled && cell.color === color;
+      if (row <= 0 || row > cellsPerAxis || col <= 0 || col > cellsPerAxis) {
+        return false;
+      }
+      const r0 = (row - 1) * sampleStep;
+      const c0 = (col - 1) * sampleStep;
+      for (let dr = 0; dr < sampleStep && r0 + dr < n; dr++) {
+        for (let dc = 0; dc < sampleStep && c0 + dc < n; dc++) {
+          const cell = grid.getCell(layerId, r0 + dr, c0 + dc);
+          if (cell.filled && cell.color === color) {
+            return true;
+          }
+        }
+      }
+      return false;
     },
     getColor(row: number, col: number): string | undefined {
-      if (row <= 0 || row > n || col <= 0 || col > n) return undefined;
-      const cell = grid.getCell(layerId, row - 1, col - 1);
-      if (cell.filled && cell.color === color) return cell.color;
+      if (row <= 0 || row > cellsPerAxis || col <= 0 || col > cellsPerAxis) {
+        return undefined;
+      }
+      const r0 = (row - 1) * sampleStep;
+      const c0 = (col - 1) * sampleStep;
+      for (let dr = 0; dr < sampleStep && r0 + dr < n; dr++) {
+        for (let dc = 0; dc < sampleStep && c0 + dc < n; dc++) {
+          const cell = grid.getCell(layerId, r0 + dr, c0 + dc);
+          if (cell.filled && cell.color === color) {
+            return color;
+          }
+        }
+      }
       return undefined;
     },
   };
@@ -42,13 +88,17 @@ function padGridForColor(grid: Grid, layerId: string, color: string): PaddedGrid
  */
 export function extractColorContours(grid: Grid, layerId: string): ColoredContour[] {
   const n = grid.n;
+  const sampleStep = smoothingSampleStep(n);
+  const colorCap = maxColorsForSmoothing(n);
   const colors = new Set<string>();
+  const cells = grid.getLayerCells(layerId);
 
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const cell = grid.getCell(layerId, r, c);
-      if (cell.filled && cell.color !== undefined) {
-        colors.add(cell.color);
+  for (let idx = 0; idx < cells.length; idx++) {
+    const cell = cells[idx]!;
+    if (cell.filled && cell.color !== undefined) {
+      colors.add(cell.color);
+      if (colors.size > colorCap) {
+        return [];
       }
     }
   }
@@ -56,7 +106,7 @@ export function extractColorContours(grid: Grid, layerId: string): ColoredContou
   const result: ColoredContour[] = [];
 
   for (const color of colors) {
-    const padded = padGridForColor(grid, layerId, color);
+    const padded = padGridForColor(grid, layerId, color, sampleStep);
     const contours = extractContours(padded);
     for (const contour of contours) {
       result.push({ ...contour, color });

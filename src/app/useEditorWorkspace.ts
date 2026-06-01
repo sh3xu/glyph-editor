@@ -21,8 +21,10 @@ import { parseProjectImportText } from "../samples/projectImport";
 import { serializeProjectDocument } from "../samples/projectSerialize";
 import { getBundledSampleProjectJson, SAMPLE_REGISTRY } from "../samples/registry";
 import type { ProjectDocument } from "../samples/schema";
+import { extractAllLayerContours, type LayerContours } from "../smoothing/multicolor";
 import type { SmoothedLayerResult, SmoothingMode } from "../smoothing/slider";
-import { computeSmoothedPaths } from "../smoothing/slider";
+import { usesRawGridStyling } from "../smoothing/slider";
+import { smoothLayerContours } from "../smoothing/smoothPaths";
 
 type ExportMode = "light" | "dark" | "no-bg";
 
@@ -30,6 +32,8 @@ export function useEditorWorkspace() {
   const gridRef = useRef(new Grid(16));
   const layerManagerRef = useRef(new LayerManager());
   const historyRef = useRef(new History());
+  const contourCacheRef = useRef<{ version: number; contours: LayerContours[] } | null>(null);
+  const smoothingDepsRef = useRef({ version: -1, alpha: 0.5, mode: "smooth" as SmoothingMode });
 
   const [version, setVersion] = useState(0);
   const [activeColor, setActiveColor] = useState("#ffffff");
@@ -65,13 +69,48 @@ export function useEditorWorkspace() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSmoothedResult(
-        computeSmoothedPaths(gridRef.current, layerManagerRef.current, alpha, smoothingMode),
-      );
-    }, 100);
+    const grid = gridRef.current;
+    const layerManager = layerManagerRef.current;
 
-    return () => clearTimeout(timer);
+    if (usesRawGridStyling(smoothingMode)) {
+      contourCacheRef.current = null;
+      setSmoothedResult([]);
+      return;
+    }
+
+    const prev = smoothingDepsRef.current;
+    const onlyStyleChange = prev.version === version;
+    smoothingDepsRef.current = { version, alpha, mode: smoothingMode };
+
+    const needsContourExtract = contourCacheRef.current?.version !== version;
+    const delay =
+      onlyStyleChange && !needsContourExtract ? 48 : grid.n >= 128 ? 24 : grid.n >= 64 ? 80 : 100;
+
+    let cancelled = false;
+
+    const run = () => {
+      if (cancelled) {
+        return;
+      }
+
+      let contours =
+        contourCacheRef.current?.version === version
+          ? contourCacheRef.current.contours
+          : undefined;
+
+      if (!contours) {
+        contours = extractAllLayerContours(grid, layerManager);
+        contourCacheRef.current = { version, contours };
+      }
+
+      setSmoothedResult(smoothLayerContours(contours, layerManager, alpha, smoothingMode));
+    };
+
+    const timer = setTimeout(run, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [version, alpha, smoothingMode]);
 
   useEffect(() => {

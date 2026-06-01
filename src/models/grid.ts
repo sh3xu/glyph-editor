@@ -1,8 +1,11 @@
 export const GRID_MIN = 8;
-export const GRID_MAX = 128;
+export const GRID_MAX = 256;
 
 /** NOTE: Preset sizes offered in the workspace grid dropdown. */
-export const GRID_SIZE_OPTIONS = [8, 16, 32, 64, 128] as const;
+export const GRID_SIZE_OPTIONS = [8, 16, 32, 64, 128, 256] as const;
+
+/** NOTE: Default raster resolution when importing images (highest preset). */
+export const IMAGE_IMPORT_GRID_SIZE = GRID_MAX;
 
 export function gridSizeSelectOptions(current: number): readonly number[] {
   const n = clampGridSize(current);

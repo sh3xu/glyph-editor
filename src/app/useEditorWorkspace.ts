@@ -21,10 +21,10 @@ import { parseProjectImportText } from "../samples/projectImport";
 import { serializeProjectDocument } from "../samples/projectSerialize";
 import { getBundledSampleProjectJson, SAMPLE_REGISTRY } from "../samples/registry";
 import type { ProjectDocument } from "../samples/schema";
-import { extractAllLayerContours, type LayerContours } from "../smoothing/multicolor";
+import { PREVIEW_MIN_LOADER_MS, runPreviewSmoothingPipeline } from "../smoothing/chunkedSmoothing";
+import type { LayerContours } from "../smoothing/multicolor";
 import type { SmoothedLayerResult, SmoothingMode } from "../smoothing/slider";
 import { usesRawGridStyling } from "../smoothing/slider";
-import { smoothLayerContours } from "../smoothing/smoothPaths";
 
 type ExportMode = "light" | "dark" | "no-bg";
 
@@ -33,13 +33,14 @@ export function useEditorWorkspace() {
   const layerManagerRef = useRef(new LayerManager());
   const historyRef = useRef(new History());
   const contourCacheRef = useRef<{ version: number; contours: LayerContours[] } | null>(null);
-  const smoothingDepsRef = useRef({ version: -1, alpha: 0.5, mode: "smooth" as SmoothingMode });
+  const smoothingGenerationRef = useRef(0);
 
   const [version, setVersion] = useState(0);
   const [activeColor, setActiveColor] = useState("#ffffff");
   const [alpha, setAlpha] = useState(0.5);
   const [smoothingMode, setSmoothingMode] = useState<SmoothingMode>("smooth");
   const [smoothedResult, setSmoothedResult] = useState<SmoothedLayerResult[]>([]);
+  const [previewComputing, setPreviewComputing] = useState(false);
   const [exportMode, setExportMode] = useState<ExportMode>("no-bg");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [activeTool, setActiveTool] = useState<Tool>(Tool.Draw);
@@ -68,48 +69,71 @@ export function useEditorWorkspace() {
     setVersion(1);
   }, []);
 
-  useEffect(() => {
-    const grid = gridRef.current;
-    const layerManager = layerManagerRef.current;
+  const commitAlpha = useCallback((value: number) => {
+    setAlpha(Math.max(0, Math.min(1, value)));
+  }, []);
 
+  useEffect(() => {
     if (usesRawGridStyling(smoothingMode)) {
+      smoothingGenerationRef.current += 1;
       contourCacheRef.current = null;
       setSmoothedResult([]);
+      setPreviewComputing(false);
       return;
     }
 
-    const prev = smoothingDepsRef.current;
-    const onlyStyleChange = prev.version === version;
-    smoothingDepsRef.current = { version, alpha, mode: smoothingMode };
-
+    const generation = ++smoothingGenerationRef.current;
+    const grid = gridRef.current;
     const needsContourExtract = contourCacheRef.current?.version !== version;
-    const delay =
-      onlyStyleChange && !needsContourExtract ? 48 : grid.n >= 128 ? 24 : grid.n >= 64 ? 80 : 100;
+    const delay = needsContourExtract ? (grid.n >= 128 ? 80 : 120) : 160;
 
-    let cancelled = false;
+    setPreviewComputing(true);
 
-    const run = () => {
-      if (cancelled) {
-        return;
-      }
+    const timer = setTimeout(() => {
+      void (async () => {
+        const started = performance.now();
 
-      let contours =
-        contourCacheRef.current?.version === version
-          ? contourCacheRef.current.contours
-          : undefined;
+        try {
+          if (generation !== smoothingGenerationRef.current) {
+            return;
+          }
 
-      if (!contours) {
-        contours = extractAllLayerContours(grid, layerManager);
-        contourCacheRef.current = { version, contours };
-      }
+          const { contours, result } = await runPreviewSmoothingPipeline(
+            grid,
+            layerManagerRef.current,
+            version,
+            alpha,
+            smoothingMode,
+            contourCacheRef.current,
+          );
 
-      setSmoothedResult(smoothLayerContours(contours, layerManager, alpha, smoothingMode));
-    };
+          if (generation !== smoothingGenerationRef.current) {
+            return;
+          }
 
-    const timer = setTimeout(run, delay);
+          contourCacheRef.current = { version, contours };
+
+          const elapsed = performance.now() - started;
+          if (elapsed < PREVIEW_MIN_LOADER_MS) {
+            await new Promise((resolve) => setTimeout(resolve, PREVIEW_MIN_LOADER_MS - elapsed));
+          }
+
+          if (generation !== smoothingGenerationRef.current) {
+            return;
+          }
+
+          setSmoothedResult(result);
+        } finally {
+          if (generation === smoothingGenerationRef.current) {
+            setPreviewComputing(false);
+          }
+        }
+      })();
+    }, delay);
+
     return () => {
-      cancelled = true;
       clearTimeout(timer);
+      smoothingGenerationRef.current += 1;
     };
   }, [version, alpha, smoothingMode]);
 
@@ -418,6 +442,7 @@ export function useEditorWorkspace() {
         sampleSummaries,
         canvasHasContent,
         canvasViewResetKey,
+        previewComputing,
       },
       actions: {
         setTheme,
@@ -426,6 +451,7 @@ export function useEditorWorkspace() {
         setCursorPos,
         setActiveColor,
         setAlpha,
+        commitAlpha,
         setSmoothingMode,
         setExportMode,
         handleUndo,
@@ -456,6 +482,7 @@ export function useEditorWorkspace() {
       alpha,
       smoothingMode,
       smoothedResult,
+      previewComputing,
       exportMode,
       theme,
       activeTool,

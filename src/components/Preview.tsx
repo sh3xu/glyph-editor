@@ -11,6 +11,7 @@ interface PreviewProps {
   smoothingMode: SmoothingMode;
   grid: Grid;
   layerManager: LayerManager;
+  isComputing?: boolean;
 }
 
 export function Preview({
@@ -19,6 +20,7 @@ export function Preview({
   smoothingMode,
   grid,
   layerManager,
+  isComputing = false,
 }: PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [maxSize, setMaxSize] = useState(0);
@@ -51,6 +53,12 @@ export function Preview({
   return (
     <div ref={containerRef} className="preview-container">
       <div className="preview-frame" style={{ width: svgPixels, height: svgPixels }}>
+        {isComputing ? (
+          <div className="preview-loading" role="status" aria-live="polite" aria-busy="true">
+            <span className="preview-loading-spinner" aria-hidden="true" />
+            <span className="preview-loading-label">Updating preview</span>
+          </div>
+        ) : null}
         {hasContent ? (
           <svg viewBox={`0 0 ${viewSize} ${viewSize}`} width={svgPixels} height={svgPixels}>
             {!useVectorPreview

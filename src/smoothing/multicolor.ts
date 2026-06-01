@@ -98,15 +98,25 @@ export function scaleContourToGrid(contour: Contour, sampleStep: number): Contou
   };
 }
 
-/**
- * Extract contours per color from a single layer.
- */
-export function extractColorContours(grid: Grid, layerId: string): ColoredContour[] {
-  const n = grid.n;
-  const sampleStep = smoothingSampleStep(n);
-  const colorCap = maxColorsForSmoothing(n);
-  const colors = grid.getUniqueFillColors(layerId, colorCap);
+export interface ColorExtractionPlan {
+  sampleStep: number;
+  colors: string[];
+}
 
+export function getColorExtractionPlan(grid: Grid, layerId: string): ColorExtractionPlan {
+  const n = grid.n;
+  return {
+    sampleStep: smoothingSampleStep(n),
+    colors: grid.getUniqueFillColors(layerId, maxColorsForSmoothing(n)),
+  };
+}
+
+export function extractColorContoursForColors(
+  grid: Grid,
+  layerId: string,
+  colors: readonly string[],
+  sampleStep: number,
+): ColoredContour[] {
   const result: ColoredContour[] = [];
 
   for (const color of colors) {
@@ -118,6 +128,14 @@ export function extractColorContours(grid: Grid, layerId: string): ColoredContou
   }
 
   return result;
+}
+
+/**
+ * Extract contours per color from a single layer.
+ */
+export function extractColorContours(grid: Grid, layerId: string): ColoredContour[] {
+  const plan = getColorExtractionPlan(grid, layerId);
+  return extractColorContoursForColors(grid, layerId, plan.colors, plan.sampleStep);
 }
 
 /**

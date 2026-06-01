@@ -36,7 +36,7 @@ export interface InspectorProps {
 
   // Smoothing
   alpha: number;
-  onAlphaChange: (value: number) => void;
+  onAlphaCommit: (value: number) => void;
   smoothingMode: SmoothingMode;
   onSmoothingModeChange: (mode: SmoothingMode) => void;
 
@@ -87,7 +87,7 @@ export function Inspector({ ...props }: InspectorProps) {
       />
       <SmoothingSection
         alpha={props.alpha}
-        onAlphaChange={props.onAlphaChange}
+        onAlphaCommit={props.onAlphaCommit}
         smoothingMode={props.smoothingMode}
         onSmoothingModeChange={props.onSmoothingModeChange}
       />
@@ -414,18 +414,27 @@ export function LayersSection({
 
 interface SmoothingSectionProps {
   alpha: number;
-  onAlphaChange: (value: number) => void;
+  onAlphaCommit: (value: number) => void;
   smoothingMode: SmoothingMode;
   onSmoothingModeChange: (mode: SmoothingMode) => void;
 }
 
 export function SmoothingSection({
   alpha,
-  onAlphaChange,
+  onAlphaCommit,
   smoothingMode,
   onSmoothingModeChange,
 }: SmoothingSectionProps) {
   const rawGrid = smoothingMode === "none";
+  const [draftAlpha, setDraftAlpha] = useState(alpha);
+
+  useEffect(() => {
+    setDraftAlpha(alpha);
+  }, [alpha]);
+
+  function commitDraftAlpha() {
+    onAlphaCommit(draftAlpha);
+  }
 
   return (
     <div className="inspector-section">
@@ -448,12 +457,19 @@ export function SmoothingSection({
           min="0"
           max="1"
           step="0.01"
-          value={alpha}
-          onChange={(e) => onAlphaChange(parseFloat(e.target.value))}
+          value={draftAlpha}
+          onChange={(e) => setDraftAlpha(parseFloat(e.target.value))}
+          onPointerUp={commitDraftAlpha}
+          onPointerCancel={commitDraftAlpha}
+          onKeyUp={(e) => {
+            if (e.key === "Enter") {
+              commitDraftAlpha();
+            }
+          }}
           aria-label="Styling intensity"
           disabled={rawGrid}
         />
-        <span className="slider-value">{alpha.toFixed(2)}</span>
+        <span className="slider-value">{draftAlpha.toFixed(2)}</span>
       </div>
     </div>
   );

@@ -53,6 +53,7 @@ export function AppShell() {
             smoothingMode={state.smoothingMode}
             grid={state.gridRef.current}
             layerManager={state.layerManager}
+            isComputing={state.previewComputing}
           />
           <InspectorPanel
             activeTool={state.activeTool}
@@ -75,7 +76,7 @@ export function AppShell() {
             onRotateLayer={actions.handleRotateLayer}
             onRenameLayer={actions.handleRenameLayer}
             onRemoveLayer={actions.handleRemoveLayer}
-            onAlphaChange={actions.setAlpha}
+            onAlphaCommit={actions.commitAlpha}
             onSmoothingModeChange={actions.setSmoothingMode}
             onExportModeChange={actions.setExportMode}
             onExportSvg={actions.handleExportSvg}

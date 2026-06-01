@@ -34,7 +34,7 @@ interface InspectorPanelProps {
   onRotateLayer: (id: string, degrees: number) => void;
   onRenameLayer: (id: string, name: string) => void;
   onRemoveLayer: (id: string) => void;
-  onAlphaChange: (value: number) => void;
+  onAlphaCommit: (value: number) => void;
   onSmoothingModeChange: (mode: SmoothingMode) => void;
   onExportModeChange: (mode: ExportMode) => void;
   onExportSvg: () => void;
@@ -106,7 +106,7 @@ export function InspectorPanel(props: InspectorPanelProps) {
             />
             <SmoothingSection
               alpha={props.alpha}
-              onAlphaChange={props.onAlphaChange}
+              onAlphaCommit={props.onAlphaCommit}
               smoothingMode={props.smoothingMode}
               onSmoothingModeChange={props.onSmoothingModeChange}
             />

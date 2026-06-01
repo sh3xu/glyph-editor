@@ -612,6 +612,7 @@ h3 {
 }
 
 .preview-frame {
+  position: relative;
   border-radius: var(--r-md);
   overflow: hidden;
   box-shadow:
@@ -651,6 +652,43 @@ h3 {
   color: var(--text-muted);
   font-size: 12px;
   font-style: italic;
+}
+
+.preview-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: rgba(9, 9, 11, 0.72);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+[data-theme="light"] .preview-loading {
+  background: rgba(245, 245, 247, 0.85);
+}
+
+.preview-loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: preview-spin 0.75s linear infinite;
+}
+
+.preview-loading-label {
+  letter-spacing: 0.02em;
+}
+
+@keyframes preview-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Smoothing slider in preview panel */

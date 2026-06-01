@@ -11,6 +11,7 @@ interface PreviewPanelProps {
   smoothingMode: SmoothingMode;
   grid: Grid;
   layerManager: LayerManager;
+  isComputing?: boolean;
 }
 
 export function PreviewPanel({
@@ -19,6 +20,7 @@ export function PreviewPanel({
   smoothingMode,
   grid,
   layerManager,
+  isComputing = false,
 }: PreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -55,6 +57,7 @@ export function PreviewPanel({
         smoothingMode={smoothingMode}
         grid={grid}
         layerManager={layerManager}
+        isComputing={isComputing}
       />
 
       {isFullscreen && (
@@ -78,6 +81,7 @@ export function PreviewPanel({
         smoothingMode={smoothingMode}
         grid={grid}
         layerManager={layerManager}
+        isComputing={isComputing}
       />
           </div>
         </div>

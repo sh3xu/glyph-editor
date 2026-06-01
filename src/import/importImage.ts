@@ -1,5 +1,6 @@
 import { IMAGE_IMPORT_GRID_SIZE } from "../models/grid";
 import type { ProjectDocument } from "../samples/schema";
+import { yieldToMain } from "../shared/yieldToMain";
 import { buildImageProjectDocument } from "./buildImageProject";
 import {
   DEFAULT_IMAGE_IMPORT_OPTIONS,
@@ -22,7 +23,9 @@ export async function importImageFile(
 ): Promise<ImportImageResult> {
   try {
     const img = await loadImageFromFile(file);
+    await yieldToMain();
     const cells = rasterizeImageToCells(img, img.naturalWidth, img.naturalHeight, gridSize, options);
+    await yieldToMain();
     const doc = buildImageProjectDocument(cells, gridSize);
     return { ok: true, doc };
   } catch (err) {

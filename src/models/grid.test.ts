@@ -143,4 +143,20 @@ describe("Grid", () => {
     expect(cells[0]!.color).toBe("#ff0000");
     expect(cells[1]!.filled).toBe(false);
   });
+
+  it("forEachFilledCell visits only filled cells", () => {
+    grid.fillCell(LAYER_A, 1, 2, "#00ff00");
+    const visited: string[] = [];
+    grid.forEachFilledCell(LAYER_A, (row, col, color) => {
+      visited.push(`${row},${col},${color}`);
+    });
+    expect(visited).toEqual(["1,2,#00ff00"]);
+  });
+
+  it("getUniqueFillColors caps color list", () => {
+    grid.fillCell(LAYER_A, 0, 0, "#111111");
+    grid.fillCell(LAYER_A, 0, 1, "#222222");
+    grid.fillCell(LAYER_A, 0, 2, "#333333");
+    expect(grid.getUniqueFillColors(LAYER_A, 2)).toEqual(["#111111", "#222222"]);
+  });
 });

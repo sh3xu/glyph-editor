@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { Grid } from "../models/grid";
-import { extractColorContours, maxColorsForSmoothing, smoothingSampleStep } from "./multicolor";
+import {
+  extractColorContours,
+  maxColorsForSmoothing,
+  scaleContourToGrid,
+  smoothingSampleStep,
+} from "./multicolor";
 
 describe("smoothingSampleStep", () => {
   it("uses coarser sampling on large grids", () => {
@@ -15,6 +20,17 @@ describe("maxColorsForSmoothing", () => {
     expect(maxColorsForSmoothing(64)).toBe(96);
     expect(maxColorsForSmoothing(128)).toBe(48);
     expect(maxColorsForSmoothing(256)).toBe(32);
+  });
+});
+
+describe("scaleContourToGrid", () => {
+  it("scales sample-space points to full grid padded coordinates", () => {
+    const scaled = scaleContourToGrid(
+      { isHole: false, points: [{ x: 2, y: 2 }, { x: 3, y: 2 }] },
+      4,
+    );
+    expect(scaled.points[0]).toEqual({ x: 5, y: 5 });
+    expect(scaled.points[1]).toEqual({ x: 9, y: 5 });
   });
 });
 

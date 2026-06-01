@@ -41,12 +41,11 @@ export function Preview({
   const rawGrid = usesRawGridStyling(smoothingMode);
 
   const hasPaths = smoothedResult.some((l) => l.paths.length > 0);
-  const hasPixelCells = layerManager.getVisibleLayers().some((layer) => {
-    const cells = grid.getLayerCells(layer.id);
-    return cells.some((cell) => cell.filled && cell.color !== undefined);
-  });
-
   const useVectorPreview = !rawGrid && hasPaths;
+  const needsPixelScan = rawGrid || !hasPaths;
+  const hasPixelCells = needsPixelScan
+    ? layerManager.getVisibleLayers().some((layer) => grid.layerHasFilledCells(layer.id))
+    : false;
   const hasContent = hasPixelCells || hasPaths;
 
   return (
@@ -60,21 +59,14 @@ export function Preview({
                   const transform =
                     rot !== 0 ? `rotate(${rot}, ${center}, ${center})` : undefined;
                   const rects: Array<{ key: string; x: number; y: number; fill: string }> = [];
-                  const cells = grid.getLayerCells(layer.id);
-                  for (let idx = 0; idx < cells.length; idx++) {
-                    const cell = cells[idx]!;
-                    if (!cell.filled || !cell.color) {
-                      continue;
-                    }
-                    const row = Math.floor(idx / grid.n);
-                    const col = idx % grid.n;
+                  grid.forEachFilledCell(layer.id, (row, col, color) => {
                     rects.push({
                       key: `${row},${col}`,
                       x: col + pad,
                       y: row + pad,
-                      fill: cell.color,
+                      fill: color,
                     });
-                  }
+                  });
                   return (
                     <g key={layer.id} transform={transform}>
                       {rects.map((rect) => (

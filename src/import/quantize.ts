@@ -41,7 +41,7 @@ export function countQuantizedUniqueColors(
 }
 
 /**
- * NOTE: Picks the coarsest quantization that stays at or under maxColors (fewer contour passes).
+ * NOTE: Picks the coarsest (lowest bit depth) quantization that stays at or under maxColors.
  */
 export function chooseQuantizeBits(
   pixels: Uint8ClampedArray,
@@ -50,10 +50,10 @@ export function chooseQuantizeBits(
   alphaThreshold: number,
   maxColors: number = MAX_IMPORT_UNIQUE_COLORS,
 ): number {
-  for (let bits = 6; bits >= 2; bits--) {
+  for (let bits = 2; bits <= 6; bits++) {
     if (countQuantizedUniqueColors(pixels, width, height, alphaThreshold, bits) <= maxColors) {
       return bits;
     }
   }
-  return 2;
+  return 6;
 }

@@ -76,7 +76,13 @@ export function WorkspaceImport({
     if (!file) {
       return;
     }
-    const text = await file.text();
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setImportMessage("Could not read the project file.");
+      return;
+    }
     const result = parseProjectImportText(text);
     if (!result.ok) {
       setImportMessage(result.error);

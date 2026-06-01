@@ -1,6 +1,6 @@
 import type { Grid } from "../models/grid";
 import type { LayerManager } from "../models/layers";
-import { type Contour, extractContours } from "./contour";
+import { type Contour, type Point, extractContours } from "./contour";
 import type { PaddedGrid } from "./padding";
 
 export interface ColoredContour extends Contour {
@@ -83,6 +83,21 @@ function padGridForColor(grid: Grid, layerId: string, color: string, sampleStep:
   };
 }
 
+/** NOTE: Map padded sample-space contour coords back to full-grid padded coordinates. */
+export function scaleContourToGrid(contour: Contour, sampleStep: number): Contour {
+  if (sampleStep <= 1) {
+    return contour;
+  }
+  const scalePoint = (p: Point): Point => ({
+    x: (p.x - 1) * sampleStep + 1,
+    y: (p.y - 1) * sampleStep + 1,
+  });
+  return {
+    isHole: contour.isHole,
+    points: contour.points.map(scalePoint),
+  };
+}
+
 /**
  * Extract contours per color from a single layer.
  */
@@ -90,18 +105,7 @@ export function extractColorContours(grid: Grid, layerId: string): ColoredContou
   const n = grid.n;
   const sampleStep = smoothingSampleStep(n);
   const colorCap = maxColorsForSmoothing(n);
-  const colors = new Set<string>();
-  const cells = grid.getLayerCells(layerId);
-
-  for (let idx = 0; idx < cells.length; idx++) {
-    const cell = cells[idx]!;
-    if (cell.filled && cell.color !== undefined) {
-      colors.add(cell.color);
-      if (colors.size > colorCap) {
-        return [];
-      }
-    }
-  }
+  const colors = grid.getUniqueFillColors(layerId, colorCap);
 
   const result: ColoredContour[] = [];
 
@@ -109,7 +113,7 @@ export function extractColorContours(grid: Grid, layerId: string): ColoredContou
     const padded = padGridForColor(grid, layerId, color, sampleStep);
     const contours = extractContours(padded);
     for (const contour of contours) {
-      result.push({ ...contour, color });
+      result.push({ ...scaleContourToGrid(contour, sampleStep), color });
     }
   }
 

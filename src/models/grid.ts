@@ -111,6 +111,51 @@ export class Grid {
     return [...this._layers.get(layerId)!];
   }
 
+  forEachFilledCell(
+    layerId: string,
+    callback: (row: number, col: number, color: string) => void,
+  ): void {
+    if (!this._layers.has(layerId)) {
+      return;
+    }
+    const cells = this._layers.get(layerId)!;
+    for (let idx = 0; idx < cells.length; idx++) {
+      const cell = cells[idx]!;
+      if (cell.filled && cell.color !== undefined) {
+        callback(Math.floor(idx / this._n), idx % this._n, cell.color);
+      }
+    }
+  }
+
+  layerHasFilledCells(layerId: string): boolean {
+    if (!this._layers.has(layerId)) {
+      return false;
+    }
+    const cells = this._layers.get(layerId)!;
+    for (let idx = 0; idx < cells.length; idx++) {
+      const cell = cells[idx]!;
+      if (cell.filled && cell.color !== undefined) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getUniqueFillColors(layerId: string, maxColors?: number): string[] {
+    const colors: string[] = [];
+    const seen = new Set<string>();
+    this.forEachFilledCell(layerId, (_row, _col, color) => {
+      if (!seen.has(color)) {
+        seen.add(color);
+        colors.push(color);
+      }
+    });
+    if (maxColors !== undefined && colors.length > maxColors) {
+      return colors.slice(0, maxColors);
+    }
+    return colors;
+  }
+
   importLayerCells(layerId: string, cells: readonly CellData[]): void {
     const expected = this._n * this._n;
     if (cells.length !== expected) {

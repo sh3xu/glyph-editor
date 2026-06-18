@@ -1,12 +1,9 @@
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PngScale } from "../export/png";
 import { clampPngScale, MAX_PNG_SCALE, MIN_PNG_SCALE } from "../export/png";
 import type { Layer } from "../models/layers";
 import type { SymmetryMode, ToolOptions } from "../models/tools";
 import { Tool } from "../models/tools";
-import { parseProjectImportText } from "../samples/projectImport";
-import type { ProjectDocument } from "../samples/schema";
-import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import type { SmoothingMode } from "../smoothing/slider";
 import { ColorPickerIcon, EyeIcon, EyeOffIcon, RotateLeftIcon, RotateRightIcon, TrashIcon } from "./icons";
 import { SegmentedControl } from "./SegmentedControl";
@@ -39,7 +36,7 @@ export interface InspectorProps {
 
   // Smoothing
   alpha: number;
-  onAlphaChange: (value: number) => void;
+  onAlphaCommit: (value: number) => void;
   smoothingMode: SmoothingMode;
   onSmoothingModeChange: (mode: SmoothingMode) => void;
 
@@ -51,7 +48,6 @@ export interface InspectorProps {
   canvasHasContent: boolean;
   theme: "dark" | "light";
   onExportProject: () => void;
-  onApplyImportedProject: (doc: ProjectDocument) => void;
 }
 
 const PRESET_COLORS = [
@@ -91,7 +87,7 @@ export function Inspector({ ...props }: InspectorProps) {
       />
       <SmoothingSection
         alpha={props.alpha}
-        onAlphaChange={props.onAlphaChange}
+        onAlphaCommit={props.onAlphaCommit}
         smoothingMode={props.smoothingMode}
         onSmoothingModeChange={props.onSmoothingModeChange}
       />
@@ -100,10 +96,7 @@ export function Inspector({ ...props }: InspectorProps) {
         onExportModeChange={props.onExportModeChange}
         onExportSvg={props.onExportSvg}
         onExportPng={props.onExportPng}
-        canvasHasContent={props.canvasHasContent}
-        theme={props.theme}
         onExportProject={props.onExportProject}
-        onApplyImportedProject={props.onApplyImportedProject}
       />
     </div>
   );
@@ -421,18 +414,40 @@ export function LayersSection({
 
 interface SmoothingSectionProps {
   alpha: number;
-  onAlphaChange: (value: number) => void;
+  onAlphaCommit: (value: number) => void;
   smoothingMode: SmoothingMode;
   onSmoothingModeChange: (mode: SmoothingMode) => void;
 }
 
 export function SmoothingSection({
   alpha,
-  onAlphaChange,
+  onAlphaCommit,
   smoothingMode,
   onSmoothingModeChange,
 }: SmoothingSectionProps) {
   const rawGrid = smoothingMode === "none";
+  const [draftAlpha, setDraftAlpha] = useState(alpha);
+
+  useEffect(() => {
+    setDraftAlpha(alpha);
+  }, [alpha]);
+
+  function commitDraftAlpha() {
+    onAlphaCommit(draftAlpha);
+  }
+
+  const SLIDER_COMMIT_KEYS = new Set([
+    "Enter",
+    " ",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+  ]);
 
   return (
     <div className="inspector-section">
@@ -455,12 +470,20 @@ export function SmoothingSection({
           min="0"
           max="1"
           step="0.01"
-          value={alpha}
-          onChange={(e) => onAlphaChange(parseFloat(e.target.value))}
+          value={draftAlpha}
+          onChange={(e) => setDraftAlpha(parseFloat(e.target.value))}
+          onPointerUp={commitDraftAlpha}
+          onPointerCancel={commitDraftAlpha}
+          onBlur={commitDraftAlpha}
+          onKeyUp={(e) => {
+            if (SLIDER_COMMIT_KEYS.has(e.key)) {
+              commitDraftAlpha();
+            }
+          }}
           aria-label="Styling intensity"
           disabled={rawGrid}
         />
-        <span className="slider-value">{alpha.toFixed(2)}</span>
+        <span className="slider-value">{draftAlpha.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -471,10 +494,7 @@ interface ExportSectionProps {
   onExportModeChange: (mode: ExportMode) => void;
   onExportSvg: () => void;
   onExportPng: (scale: PngScale) => void;
-  canvasHasContent: boolean;
-  theme: "dark" | "light";
   onExportProject: () => void;
-  onApplyImportedProject: (doc: ProjectDocument) => void;
 }
 
 export function ExportSection({
@@ -482,17 +502,10 @@ export function ExportSection({
   onExportModeChange,
   onExportSvg,
   onExportPng,
-  canvasHasContent,
-  theme,
   onExportProject,
-  onApplyImportedProject,
 }: ExportSectionProps) {
   const [exportFormat, setExportFormat] = useState<"svg" | "png">("svg");
   const [pngQuality, setPngQuality] = useState<PngScale>(8);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
-  const [pendingDoc, setPendingDoc] = useState<ProjectDocument | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleExport() {
     if (exportFormat === "svg") {
@@ -500,40 +513,6 @@ export function ExportSection({
       return;
     }
     onExportPng(clampPngScale(pngQuality));
-  }
-
-  async function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    setImportMessage(null);
-    if (!file) {
-      return;
-    }
-    const text = await file.text();
-    const result = parseProjectImportText(text);
-    if (!result.ok) {
-      setImportMessage(result.error);
-      return;
-    }
-    if (canvasHasContent) {
-      setPendingDoc(result.doc);
-      setImportConfirmOpen(true);
-    } else {
-      onApplyImportedProject(result.doc);
-    }
-  }
-
-  function handleConfirmImportReplace() {
-    if (pendingDoc) {
-      onApplyImportedProject(pendingDoc);
-    }
-    setImportConfirmOpen(false);
-    setPendingDoc(null);
-  }
-
-  function handleCancelImportReplace() {
-    setImportConfirmOpen(false);
-    setPendingDoc(null);
   }
 
   return (
@@ -588,44 +567,14 @@ export function ExportSection({
 
       <span className="inspector-label inspector-label-spaced">Project</span>
       <p className="inspector-project-hint">
-        Save or load a <code className="inspector-code">.json</code> project file. Each layer uses a{" "}
-        <code className="inspector-code">cells</code> array in row-major order:{" "}
-        <code className="inspector-code">null</code> for empty, or a hex color string when filled
-        (same shape as bundled samples).
+        Export a <code className="inspector-code">.json</code> project file. Import project or image
+        files from the header <strong>Import</strong> menu (next to Samples).
       </p>
       <div className="inspector-row inspector-row-wrap">
         <button type="button" className="btn btn-sm" onClick={onExportProject}>
           Export JSON
         </button>
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={() => fileInputRef.current?.click()}
-          title="Import a Glyph project JSON file"
-        >
-          Import JSON
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="inspector-file-input-hidden"
-          accept=".json,application/json"
-          aria-label="Import project JSON file"
-          onChange={handleImportFileChange}
-        />
       </div>
-      {importMessage ? <div className="inspector-import-error">{importMessage}</div> : null}
-
-      <ConfirmDialog
-        open={importConfirmOpen}
-        theme={theme}
-        title="Replace canvas?"
-        message="Importing this project will replace your current artwork and clear undo history for this session."
-        confirmLabel="Import project"
-        cancelLabel="Cancel"
-        onConfirm={handleConfirmImportReplace}
-        onCancel={handleCancelImportReplace}
-      />
     </div>
   );
 }

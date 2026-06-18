@@ -21,8 +21,10 @@ import { parseProjectImportText } from "../samples/projectImport";
 import { serializeProjectDocument } from "../samples/projectSerialize";
 import { getBundledSampleProjectJson, SAMPLE_REGISTRY } from "../samples/registry";
 import type { ProjectDocument } from "../samples/schema";
+import { PREVIEW_MIN_LOADER_MS, runPreviewSmoothingPipeline } from "../smoothing/chunkedSmoothing";
+import type { LayerContours } from "../smoothing/multicolor";
 import type { SmoothedLayerResult, SmoothingMode } from "../smoothing/slider";
-import { computeSmoothedPaths } from "../smoothing/slider";
+import { usesRawGridStyling } from "../smoothing/slider";
 
 type ExportMode = "light" | "dark" | "no-bg";
 
@@ -30,12 +32,15 @@ export function useEditorWorkspace() {
   const gridRef = useRef(new Grid(16));
   const layerManagerRef = useRef(new LayerManager());
   const historyRef = useRef(new History());
+  const contourCacheRef = useRef<{ version: number; contours: LayerContours[] } | null>(null);
+  const smoothingGenerationRef = useRef(0);
 
   const [version, setVersion] = useState(0);
   const [activeColor, setActiveColor] = useState("#ffffff");
   const [alpha, setAlpha] = useState(0.5);
   const [smoothingMode, setSmoothingMode] = useState<SmoothingMode>("smooth");
   const [smoothedResult, setSmoothedResult] = useState<SmoothedLayerResult[]>([]);
+  const [previewComputing, setPreviewComputing] = useState(false);
   const [exportMode, setExportMode] = useState<ExportMode>("no-bg");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [activeTool, setActiveTool] = useState<Tool>(Tool.Draw);
@@ -64,14 +69,72 @@ export function useEditorWorkspace() {
     setVersion(1);
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSmoothedResult(
-        computeSmoothedPaths(gridRef.current, layerManagerRef.current, alpha, smoothingMode),
-      );
-    }, 100);
+  const commitAlpha = useCallback((value: number) => {
+    setAlpha(Math.max(0, Math.min(1, value)));
+  }, []);
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    if (usesRawGridStyling(smoothingMode)) {
+      smoothingGenerationRef.current += 1;
+      contourCacheRef.current = null;
+      setSmoothedResult([]);
+      setPreviewComputing(false);
+      return;
+    }
+
+    const generation = ++smoothingGenerationRef.current;
+    const grid = gridRef.current;
+    const needsContourExtract = contourCacheRef.current?.version !== version;
+    const delay = needsContourExtract ? (grid.n >= 128 ? 80 : 120) : 160;
+
+    setPreviewComputing(true);
+
+    const timer = setTimeout(() => {
+      void (async () => {
+        const started = performance.now();
+
+        try {
+          if (generation !== smoothingGenerationRef.current) {
+            return;
+          }
+
+          const { contours, result } = await runPreviewSmoothingPipeline(
+            grid,
+            layerManagerRef.current,
+            version,
+            alpha,
+            smoothingMode,
+            contourCacheRef.current,
+          );
+
+          if (generation !== smoothingGenerationRef.current) {
+            return;
+          }
+
+          contourCacheRef.current = { version, contours };
+
+          const elapsed = performance.now() - started;
+          if (elapsed < PREVIEW_MIN_LOADER_MS) {
+            await new Promise((resolve) => setTimeout(resolve, PREVIEW_MIN_LOADER_MS - elapsed));
+          }
+
+          if (generation !== smoothingGenerationRef.current) {
+            return;
+          }
+
+          setSmoothedResult(result);
+        } finally {
+          if (generation === smoothingGenerationRef.current) {
+            setPreviewComputing(false);
+          }
+        }
+      })();
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+      smoothingGenerationRef.current += 1;
+    };
   }, [version, alpha, smoothingMode]);
 
   useEffect(() => {
@@ -379,6 +442,7 @@ export function useEditorWorkspace() {
         sampleSummaries,
         canvasHasContent,
         canvasViewResetKey,
+        previewComputing,
       },
       actions: {
         setTheme,
@@ -387,6 +451,7 @@ export function useEditorWorkspace() {
         setCursorPos,
         setActiveColor,
         setAlpha,
+        commitAlpha,
         setSmoothingMode,
         setExportMode,
         handleUndo,
@@ -417,6 +482,7 @@ export function useEditorWorkspace() {
       alpha,
       smoothingMode,
       smoothedResult,
+      previewComputing,
       exportMode,
       theme,
       activeTool,

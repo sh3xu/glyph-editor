@@ -204,15 +204,10 @@ export function PixelCanvas({
         ctx.rotate((layer.rotation * Math.PI) / 180);
         ctx.translate(-centerPx, -centerPx);
       }
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          const cell = grid.getCell(layer.id, r, c);
-          if (cell.filled && cell.color) {
-            ctx.fillStyle = cell.color;
-            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-          }
-        }
-      }
+      grid.forEachFilledCell(layer.id, (row, col, color) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+      });
       ctx.restore();
     }
 

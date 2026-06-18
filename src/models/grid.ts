@@ -1,8 +1,11 @@
 export const GRID_MIN = 8;
-export const GRID_MAX = 128;
+export const GRID_MAX = 256;
 
 /** NOTE: Preset sizes offered in the workspace grid dropdown. */
-export const GRID_SIZE_OPTIONS = [8, 16, 32, 64, 128] as const;
+export const GRID_SIZE_OPTIONS = [8, 16, 32, 64, 128, 256] as const;
+
+/** NOTE: Default raster resolution when importing images (highest preset). */
+export const IMAGE_IMPORT_GRID_SIZE = GRID_MAX;
 
 export function gridSizeSelectOptions(current: number): readonly number[] {
   const n = clampGridSize(current);
@@ -106,6 +109,68 @@ export class Grid {
       this.initLayer(layerId);
     }
     return [...this._layers.get(layerId)!];
+  }
+
+  forEachFilledCell(
+    layerId: string,
+    callback: (row: number, col: number, color: string) => void,
+  ): void {
+    if (!this._layers.has(layerId)) {
+      return;
+    }
+    const cells = this._layers.get(layerId)!;
+    for (let idx = 0; idx < cells.length; idx++) {
+      const cell = cells[idx]!;
+      if (cell.filled && cell.color !== undefined) {
+        callback(Math.floor(idx / this._n), idx % this._n, cell.color);
+      }
+    }
+  }
+
+  layerHasFilledCells(layerId: string): boolean {
+    if (!this._layers.has(layerId)) {
+      return false;
+    }
+    const cells = this._layers.get(layerId)!;
+    for (let idx = 0; idx < cells.length; idx++) {
+      if (cells[idx]!.filled) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  layerHasColoredCells(layerId: string): boolean {
+    if (!this._layers.has(layerId)) {
+      return false;
+    }
+    const cells = this._layers.get(layerId)!;
+    for (let idx = 0; idx < cells.length; idx++) {
+      const cell = cells[idx]!;
+      if (cell.filled && cell.color !== undefined) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  countFillColors(layerId: string): Map<string, number> {
+    const counts = new Map<string, number>();
+    this.forEachFilledCell(layerId, (_row, _col, color) => {
+      counts.set(color, (counts.get(color) ?? 0) + 1);
+    });
+    return counts;
+  }
+
+  getUniqueFillColors(layerId: string, maxColors?: number): string[] {
+    const counts = this.countFillColors(layerId);
+    const sorted = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([color]) => color);
+    if (maxColors !== undefined && sorted.length > maxColors) {
+      return sorted.slice(0, maxColors);
+    }
+    return sorted;
   }
 
   importLayerCells(layerId: string, cells: readonly CellData[]): void {

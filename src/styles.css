@@ -304,6 +304,66 @@ h3 {
   color: var(--text-muted);
 }
 
+.workspace-import-panel {
+  width: min(340px, 90vw);
+  max-height: none;
+}
+
+.workspace-import-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.workspace-import-action {
+  width: 100%;
+  justify-content: center;
+}
+
+.workspace-import-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border);
+}
+
+.workspace-import-options-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.workspace-import-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.workspace-import-sublabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.workspace-import-alpha {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.workspace-import-alpha .slider {
+  flex: 1;
+}
+
+.workspace-import-error {
+  margin-top: var(--sp-2);
+  font-size: 12px;
+  color: var(--danger);
+}
+
 .workspace-samples-load {
   flex-shrink: 0;
 }
@@ -552,6 +612,7 @@ h3 {
 }
 
 .preview-frame {
+  position: relative;
   border-radius: var(--r-md);
   overflow: hidden;
   box-shadow:
@@ -591,6 +652,43 @@ h3 {
   color: var(--text-muted);
   font-size: 12px;
   font-style: italic;
+}
+
+.preview-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: rgba(9, 9, 11, 0.72);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+[data-theme="light"] .preview-loading {
+  background: rgba(245, 245, 247, 0.85);
+}
+
+.preview-loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: preview-spin 0.75s linear infinite;
+}
+
+.preview-loading-label {
+  letter-spacing: 0.02em;
+}
+
+@keyframes preview-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Smoothing slider in preview panel */

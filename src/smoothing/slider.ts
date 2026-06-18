@@ -1,36 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Grid } from "../models/grid";
 import type { LayerManager } from "../models/layers";
-import { type SmoothedPath, smoothContour, smoothContourSubdivision } from "./bezier";
-import type { Contour } from "./contour";
 import { extractAllLayerContours } from "./multicolor";
+import { type SmoothingMode, usesRawGridStyling } from "./mode";
+import type { SmoothedLayerResult } from "./smoothPaths";
+import { smoothLayerContours } from "./smoothPaths";
 
-export interface SmoothedLayerResult {
-  layerId: string;
-  paths: Array<SmoothedPath & { color: string }>;
-  rotation: number;
-}
-
-export type SmoothingMode = "none" | "pixel" | "squircle" | "smooth";
-
-export function usesRawGridStyling(mode: SmoothingMode): boolean {
-  return mode === "none";
-}
-
-type StyledSmoothingMode = Exclude<SmoothingMode, "none">;
-
-// Each mode declares its own smoother + stylizer + alpha transform — no external conditions
-const MODE_CONFIG: Record<
-  StyledSmoothingMode,
-  {
-    smoother: (contour: Contour, alpha: number) => SmoothedPath;
-    alphaTransform: (a: number) => number;
-  }
-> = {
-  pixel: { smoother: smoothContour, alphaTransform: () => 0 },
-  squircle: { smoother: smoothContour, alphaTransform: (a) => a },
-  smooth: { smoother: smoothContourSubdivision, alphaTransform: (a) => a },
-};
+export type { SmoothingMode } from "./mode";
+export { usesRawGridStyling } from "./mode";
+export type { SmoothedLayerResult } from "./smoothPaths";
 
 export function computeSmoothedPaths(
   grid: Grid,
@@ -41,23 +19,8 @@ export function computeSmoothedPaths(
   if (usesRawGridStyling(mode)) {
     return [];
   }
-
   const layerContours = extractAllLayerContours(grid, layerManager);
-  const styledMode = mode as StyledSmoothingMode;
-  const { smoother, alphaTransform } = MODE_CONFIG[styledMode];
-  const adjustedAlpha = alphaTransform(alpha);
-
-  return layerContours.map((lc) => {
-    const layer = layerManager.getLayer(lc.layerId);
-    return {
-      layerId: lc.layerId,
-      paths: lc.contours.map((c) => ({
-        ...smoother(c, adjustedAlpha),
-        color: c.color,
-      })),
-      rotation: layer?.rotation ?? 0,
-    };
-  });
+  return smoothLayerContours(layerContours, layerManager, alpha, mode);
 }
 
 export interface SmoothingSliderState {

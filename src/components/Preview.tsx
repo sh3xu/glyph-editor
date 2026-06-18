@@ -11,6 +11,7 @@ interface PreviewProps {
   smoothingMode: SmoothingMode;
   grid: Grid;
   layerManager: LayerManager;
+  isComputing?: boolean;
 }
 
 export function Preview({
@@ -19,6 +20,7 @@ export function Preview({
   smoothingMode,
   grid,
   layerManager,
+  isComputing = false,
 }: PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [maxSize, setMaxSize] = useState(0);
@@ -41,46 +43,38 @@ export function Preview({
   const rawGrid = usesRawGridStyling(smoothingMode);
 
   const hasPaths = smoothedResult.some((l) => l.paths.length > 0);
-  const hasPixelCells = rawGrid
-    ? layerManager.getVisibleLayers().some((layer) => {
-        for (let row = 0; row < grid.n; row++) {
-          for (let col = 0; col < grid.n; col++) {
-            const cell = grid.getCell(layer.id, row, col);
-            if (cell.filled && cell.color) {
-              return true;
-            }
-          }
-        }
-        return false;
-      })
+  const useVectorPreview = !rawGrid && hasPaths;
+  const needsPixelScan = rawGrid || !hasPaths;
+  const hasPixelCells = needsPixelScan
+    ? layerManager.getVisibleLayers().some((layer) => grid.layerHasColoredCells(layer.id))
     : false;
-
-  const hasContent = rawGrid ? hasPixelCells : hasPaths;
+  const hasContent = hasPixelCells || hasPaths;
 
   return (
     <div ref={containerRef} className="preview-container">
       <div className="preview-frame" style={{ width: svgPixels, height: svgPixels }}>
+        {isComputing ? (
+          <div className="preview-loading" role="status" aria-live="polite" aria-busy="true">
+            <span className="preview-loading-spinner" aria-hidden="true" />
+            <span className="preview-loading-label">Updating preview</span>
+          </div>
+        ) : null}
         {hasContent ? (
           <svg viewBox={`0 0 ${viewSize} ${viewSize}`} width={svgPixels} height={svgPixels}>
-            {rawGrid
+            {!useVectorPreview
               ? layerManager.getVisibleLayers().map((layer) => {
                   const rot = layer.rotation ?? 0;
                   const transform =
                     rot !== 0 ? `rotate(${rot}, ${center}, ${center})` : undefined;
                   const rects: Array<{ key: string; x: number; y: number; fill: string }> = [];
-                  for (let row = 0; row < grid.n; row++) {
-                    for (let col = 0; col < grid.n; col++) {
-                      const cell = grid.getCell(layer.id, row, col);
-                      if (cell.filled && cell.color) {
-                        rects.push({
-                          key: `${row},${col}`,
-                          x: col + pad,
-                          y: row + pad,
-                          fill: cell.color,
-                        });
-                      }
-                    }
-                  }
+                  grid.forEachFilledCell(layer.id, (row, col, color) => {
+                    rects.push({
+                      key: `${row},${col}`,
+                      x: col + pad,
+                      y: row + pad,
+                      fill: color,
+                    });
+                  });
                   return (
                     <g key={layer.id} transform={transform}>
                       {rects.map((rect) => (

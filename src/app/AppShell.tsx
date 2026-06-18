@@ -23,6 +23,7 @@ export function AppShell() {
         sampleSummaries={state.sampleSummaries}
         canvasHasContent={state.canvasHasContent}
         onApplySample={actions.handleLoadSampleById}
+        onApplyImportedProject={actions.applyImportedProject}
       />
       <main className="workspace-grid">
         <aside className="workspace-tools">
@@ -52,6 +53,7 @@ export function AppShell() {
             smoothingMode={state.smoothingMode}
             grid={state.gridRef.current}
             layerManager={state.layerManager}
+            isComputing={state.previewComputing}
           />
           <InspectorPanel
             activeTool={state.activeTool}
@@ -74,7 +76,7 @@ export function AppShell() {
             onRotateLayer={actions.handleRotateLayer}
             onRenameLayer={actions.handleRenameLayer}
             onRemoveLayer={actions.handleRemoveLayer}
-            onAlphaChange={actions.setAlpha}
+            onAlphaCommit={actions.commitAlpha}
             onSmoothingModeChange={actions.setSmoothingMode}
             onExportModeChange={actions.setExportMode}
             onExportSvg={actions.handleExportSvg}
@@ -82,7 +84,6 @@ export function AppShell() {
             canvasHasContent={state.canvasHasContent}
             theme={state.theme}
             onExportProject={actions.handleExportProject}
-            onApplyImportedProject={actions.applyImportedProject}
           />
         </aside>
       </main>

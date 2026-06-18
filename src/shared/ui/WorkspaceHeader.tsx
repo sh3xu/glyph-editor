@@ -1,5 +1,7 @@
 import { MoonIcon, RedoIcon, SunIcon, UndoIcon } from "../../components/icons";
 import { gridSizeSelectOptions } from "../../models/grid";
+import type { ProjectDocument } from "../../samples/schema";
+import { WorkspaceImport } from "./WorkspaceImport";
 import type { SampleSummary } from "./WorkspaceSamples";
 import { WorkspaceSamples } from "./WorkspaceSamples";
 
@@ -15,6 +17,7 @@ interface WorkspaceHeaderProps {
   sampleSummaries: readonly SampleSummary[];
   canvasHasContent: boolean;
   onApplySample: (id: string) => void;
+  onApplyImportedProject: (doc: ProjectDocument) => void;
 }
 
 export function WorkspaceHeader({
@@ -29,6 +32,7 @@ export function WorkspaceHeader({
   sampleSummaries,
   canvasHasContent,
   onApplySample,
+  onApplyImportedProject,
 }: WorkspaceHeaderProps) {
   const gridSizeOptions = gridSizeSelectOptions(gridSize);
   return (
@@ -38,6 +42,11 @@ export function WorkspaceHeader({
         <p>Vector-first logo design workspace</p>
       </div>
       <div className="workspace-actions">
+        <WorkspaceImport
+          canvasHasContent={canvasHasContent}
+          theme={theme}
+          onApplyImportedProject={onApplyImportedProject}
+        />
         <WorkspaceSamples
           entries={sampleSummaries}
           canvasHasContent={canvasHasContent}
